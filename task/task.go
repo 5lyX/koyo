@@ -27,6 +27,7 @@ const (
 
 type Task struct {
 	ID            uuid.UUID
+	ContainerID   string
 	Name          string
 	State         State
 	Image         string
@@ -34,7 +35,7 @@ type Task struct {
 	Disk          int
 	ExposedPorts  nat.PortSet
 	PortBindings  map[string]string
-	RestartPolicy string
+	RestartPolicy container.RestartPolicyMode
 	StartTime     time.Time
 	FinishTime    time.Time
 }
@@ -157,5 +158,25 @@ func (d *Docker) Stop(id string) DockerResult {
 		return DockerResult{Error: err}
 	}
 
-	return DockerResult{Action: "stop", Result: "success", Error: nil}
+	return DockerResult{Action: "stop", ContainerId: id, Result: "success", Error: nil}
+}
+
+func NewConfig(t *Task) *Config {
+	return &Config{
+		Name:          t.Name,
+		ExposedPorts:  t.ExposedPorts,
+		Image:         t.Image,
+		Memory:        int64(t.Memory),
+		Disk:          int64(t.Disk),
+		RestartPolicy: t.RestartPolicy,
+		Runtime:       RuntimeConfig{ContainerID: t.ContainerID},
+	}
+}
+
+func NewDocker(c *Config) *Docker {
+	dc, _ := client.NewClientWithOpts(client.FromEnv)
+	return &Docker{
+		Client: dc,
+		Config: *c,
+	}
 }
