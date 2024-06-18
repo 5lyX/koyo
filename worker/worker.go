@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/golang-collections/collections/queue"
 	"github.com/google/uuid"
+	"koyo/stats"
 	"koyo/task"
 	"log"
 	"time"
@@ -15,13 +16,22 @@ type Worker struct {
 	Queue     queue.Queue
 	Db        map[uuid.UUID]*task.Task
 	TaskCount int
+	Stats     *stats.Stats
 }
 
 func (w *Worker) CollectStats() {
-	fmt.Println("I will collect stats")
+	//fmt.Println("I will collect stats")
+
+	for {
+		log.Printf("Collecting stats...")
+		w.Stats = stats.GetStats()
+		// w.TaskCount =  w.Stats.TaskCount
+		w.Stats.TaskCount = w.TaskCount
+		time.Sleep(15 * time.Second)
+	}
 }
 
-func (w *Worker) RunTask() task.DockerResult {
+func (w *Worker) runTask() task.DockerResult {
 
 	//fmt.Println("I will start or stop a task")
 
@@ -108,4 +118,58 @@ func (w *Worker) GetTasks() []*task.Task {
 		taskList = append(taskList, t)
 	}
 	return taskList
+}
+
+func (w *Worker) RunTasks() {
+	for {
+		if w.Queue.Len() != 0 {
+			result := w.runTask()
+			if result.Error != nil {
+				log.Printf("Error running task: %v", result.Error)
+			}
+		} else {
+			log.Printf("No tasks to process currently.\n")
+		}
+		log.Println("Sleeping for 10 seconds.")
+		time.Sleep(10 * time.Second)
+	}
+}
+
+func (w *Worker) InspectTask(t task.Task) task.DockerInspectResponse {
+	config := task.NewConfig(&t)
+	d := task.NewDocker(config)
+	return d.Inspect(t.ContainerID)
+}
+
+func (w Worker) updateTasks() {
+	for id, t := range w.Db {
+		if t.State == task.Running {
+			resp := w.InspectTask(*t)
+			if resp.Error != nil {
+				fmt.Printf("Error %v\n", resp.Error)
+			}
+
+			if resp.Container == nil {
+				log.Printf("No container for running task %s\n", id)
+				w.Db[id].State = task.Failed
+			}
+
+			if resp.Container.State.Status == "exited" {
+				log.Printf("Container for task %s in non-running state %s\n", id, resp.Container.State.Status)
+				w.Db[id].State = task.Failed
+			}
+
+			w.Db[id].HostPorts = resp.Container.NetworkSettings.NetworkSettingsBase.Ports
+		}
+	}
+}
+
+func (w *Worker) UpdateTask() {
+	for {
+		log.Println("Checking status of tasks")
+		w.updateTasks()
+		log.Println("Task updates completed")
+		log.Println("Sleeping for 15 seconds")
+		time.Sleep(15 * time.Second)
+	}
 }

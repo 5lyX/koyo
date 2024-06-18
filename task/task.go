@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
@@ -33,6 +34,7 @@ type Task struct {
 	Image         string
 	Memory        int
 	Disk          int
+	HostPorts     nat.PortMap
 	ExposedPorts  nat.PortSet
 	PortBindings  map[string]string
 	RestartPolicy container.RestartPolicyMode
@@ -77,6 +79,11 @@ type DockerResult struct {
 	Action      string
 	ContainerId string
 	Result      string
+}
+
+type DockerInspectResponse struct {
+	Error     error
+	Container *types.ContainerJSON
 }
 
 func (d *Docker) Run() DockerResult {
@@ -179,4 +186,16 @@ func NewDocker(c *Config) *Docker {
 		Client: dc,
 		Config: *c,
 	}
+}
+
+func (d *Docker) Inspect(containerID string) DockerInspectResponse {
+	dc, _ := client.NewClientWithOpts(client.FromEnv)
+	ctx := context.Background()
+	resp, err := dc.ContainerInspect(ctx, containerID)
+	if err != nil {
+		log.Printf("Error inspecting container %s: %v\n", containerID, err)
+		return DockerInspectResponse{Error: err}
+	}
+
+	return DockerInspectResponse{Container: &resp}
 }
