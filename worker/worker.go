@@ -141,7 +141,7 @@ func (w *Worker) InspectTask(t task.Task) task.DockerInspectResponse {
 	return d.Inspect(t.ContainerID)
 }
 
-func (w Worker) updateTasks() {
+func (w *Worker) updateTasks() {
 	for id, t := range w.Db {
 		if t.State == task.Running {
 			resp := w.InspectTask(*t)
@@ -160,11 +160,12 @@ func (w Worker) updateTasks() {
 			}
 
 			w.Db[id].HostPorts = resp.Container.NetworkSettings.NetworkSettingsBase.Ports
+
 		}
 	}
 }
 
-func (w *Worker) UpdateTask() {
+func (w *Worker) UpdateTasks() {
 	for {
 		log.Println("Checking status of tasks")
 		w.updateTasks()
