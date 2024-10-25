@@ -92,8 +92,8 @@ func (e *Epvm) Score(t task.Task, nodes []*node.Node) map[string]float64 {
 	maxJobs := 4.0
 
 	for _, n := range nodes {
-		cpuUsage := calculateCpuUsage(n)
-		cpuLoad := calculateLoad(cpuUsage, math.Pow(2, 0.8))
+		cpuUsage, _ := calculateCpuUsage(n)
+		cpuLoad := calculateLoad(*cpuUsage, math.Pow(2, 0.8))
 
 		memoryAllocated := float64(n.Stats.MemUsedKb()) + float64(n.MemoryAllocated)
 		memoryPercentAllocated := memoryAllocated / float64(n.Memory)
