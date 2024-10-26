@@ -8,6 +8,10 @@ var stateTransitionMap = map[State][]State{
 	Failed:    []State{},
 }
 
+func (s State) StringSlice() []string {
+	return []string{"Pending", "Scheduled", "Running", "Completed", "Failed"}
+}
+
 func Contains(states []State, state State) bool {
 	for _, s := range states {
 		if s == state {
