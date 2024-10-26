@@ -365,6 +365,19 @@ func (m *Manager) restartTask(t *task.Task) {
 	log.Printf("%#v\n", t)
 }
 
+func (m *Manager) UpdateNodeStats() {
+	for {
+		for _, node := range m.WorkerNodes {
+			log.Printf("Collecting stats for node %v", node.Name)
+			_, err := node.GetStats()
+			if err != nil {
+				log.Printf("error updating node stats: %v", err)
+			}
+		}
+		time.Sleep(15 * time.Second)
+	}
+}
+
 func (m *Manager) doHealthCheck() {
 	for _, t := range m.GetTasks() {
 		if t.State == task.Running && t.RestartCount < 3 {
